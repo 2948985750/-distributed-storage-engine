@@ -1,0 +1,13 @@
+spring:
+  elasticsearch:
+    uris: http://128.0.0.128:9200
+  datasource:
+    url: jdbc:mysql://128.0.0.128:3306/db_NameNode?useSSL=false
+    username: root
+    password: root
+    driver-class-name: com.mysql.jdbc.Driver
+
+mybatis:
+  type-aliases-package: com.hyz.dao.entity
+  configuration:
+    map-underscore-to-camel-case: true

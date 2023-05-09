@@ -1,0 +1,67 @@
+syntax = "proto3";
+package meta;
+import public "google/protobuf/timestamp.proto";
+import public "google/protobuf/empty.proto";
+option java_multiple_files = false;
+option java_package = "com.hyz.proto";
+option java_outer_classname = "NameNode_DataNode";
+
+
+/*
+    如果Client 上传中断 ，只发 Block 附带的 FileHash，让 NameNode 删除该 File 的所有已经记录的元数据
+ */
+
+// 每个分成了多个数据块
+/*
+    nameNode 存储:
+
+    "blockList": {
+        "第一块":[
+            Block,
+            Block,
+            Block
+            ],
+        "第二块": [
+            "Block ID 4" : "Server ID 1",
+            "Block ID 5" : "Server ID 2",
+            "Block ID 6" : "Server ID 3"
+            ]
+    }
+ */
+message Block{
+  string ServerId = 1;
+  string BlockId = 2;
+  int64 StarSubscript = 5;
+  int64 EndSubscript = 6;
+}
+
+enum BlockStat{
+  WriteErr = 0;
+  WriteSuc = 1;
+  DeleteErr = 2;
+  DeleteSuc = 3;
+}
+
+message BlockOrderMap{
+  int32 OrderOfBlockInFile = 1;
+  repeated Block BlockList = 2;
+}
+
+// 1: a,b,c; 2:a,b,c
+// 操作状态，根据 operateStat 来判断此次操作是否进行。
+message BlockListResponse {
+  BlockStat OperateStat = 1;
+  string FileHash = 2;
+  string UploadTime = 3;
+  repeated BlockOrderMap BlockList = 4;
+}
+
+//--------------------
+
+//  DataNode 作为服务端，NameNode 作为远程函数调用端
+//      背景：Client 的任何【主动操作】（上传/删/下载/修改）经过 NameNode 申请后，Client 直接向 DataNode 操作
+//      todo 明确使用场景
+service BlockResultReport{
+  // 返回某一个文件的 Block 元信息 和所属文件的整体 hash 值
+  rpc GetBlockStatus(google.protobuf.Empty) returns (stream BlockListResponse);
+}

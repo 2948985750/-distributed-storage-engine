@@ -1,0 +1,117 @@
+syntax = "proto3";
+import "NameNode_DataNode.proto";
+option java_multiple_files = false;
+option java_package = "com.hyz.proto";
+option java_outer_classname = "Client_NameNode";
+package meta;
+
+// Client（客户端） 与 NameNode（服务端） 交互信息定义
+/*
+  更新方向：鉴权、团队角色 ...
+ */
+
+// 从 Client 上传的部分元数据
+message BasicMetadata{
+  string FileName = 1;
+  string FileSize = 2; // 纯数字，以 MB 为单位
+  string FileExtension = 3;
+  string Path = 4;
+  string FileHash = 5;
+}
+
+message FileMetadata{
+  BasicMetadata  BasicMetadata = 1;
+  repeated Block BlockMetadataList = 2;  // 来自 DataNode 的 Block 元数据列表
+}
+
+// ----------------- Request 定义 ------------------------
+
+// 上传文件
+message PutRequest{
+  string FileHash = 1;
+}
+
+// 获取文件
+message GetRequest{
+  string RemotePath = 1;
+  string FileHash = 2;  // 正常情况下，只用 hash 搜索就行了
+}
+
+// 删除文件
+message DeleteRequest{
+  string RemotePath = 1;
+  string FileHash = 2;  // 验证
+}
+
+// 获取某一文件的元数据
+message StatRequest{
+  string RemotePath = 1;
+  string FileHash = 2;  // 验证
+}
+
+// 创建远程目录路径
+message MkdirRequest{
+  string NewRemotePath = 1;
+}
+
+// 更改文件所在目录
+message MovePathRequest{
+  string SourcePath = 1;
+  string NewPath = 2;
+}
+
+// 获取某一目录下，所有文件的元数据
+message ListMetaRequest{
+  string SourcePath = 1;
+}
+
+// ----------------- Response 定义 ------------------------
+
+
+
+message StatResponse{
+  bool IsSucceed = 1;  // 是否成功
+  string ErrMessage = 2;
+  string RemotePath = 3;   // 有可能 Path 被其他客户端更新了
+  BasicMetadata BasicMetadata = 4;
+  // Path + 该目录下的所有文件的元数据 = 目录列表
+}
+
+message ListMetaResponse{
+  bool IsSucceed = 1;  // 是否成功
+  string ErrMessage = 2;
+  string RemotePath = 3;   // 有可能 Path 被其他客户端更新了
+  repeated BasicMetadata BasicMetadata = 4;
+  // Path + 该目录下的所有文件的元数据 = 目录列表
+}
+
+// BlockResponse：凡涉及到 DataNode 的操作，Block 列表。
+message BlockResponse{
+  bool IsSucceed = 1;  // 是否成功，
+  string ErrMessage = 2;
+  repeated Block BlockList = 3;
+}
+
+// ---------------------------------
+
+// NameNode 作为 GRPC 服务端
+service NameNodeRPC{
+  // 配置文件存所有 NameNode ，下一版本添加网关
+
+  // 客户端将文件基本数据传入，返回当前路径的所有文件夹和文件的基本数据
+  rpc Put(BasicMetadata) returns (ListMetaResponse);
+  // 客户端通过FileHash和远程路径，返回文件元数据
+  rpc Get(GetRequest) returns (BlockResponse);
+  // 客户端将发送远程路径和FileHash值，客户端返回删除元素的列表
+  rpc DeleteList(DeleteRequest) returns (BlockResponse);
+
+  // 以下直接与 NameNode 交互，不用涉及 DataNode
+  // 获取某路径下的某文件的基础元数据，右键属性
+  rpc Stat(StatRequest) returns (StatResponse);
+  // 获取某路径下的所有文件的基础元数据，查看文件夹
+  rpc List(ListMetaRequest) returns (ListMetaResponse);
+  // 新建文件夹，创建一个新路径
+  rpc Mkdir(MkdirRequest) returns (ListMetaResponse);
+  // 移动文件路径
+  rpc MovePath(MovePathRequest) returns (ListMetaResponse);
+}

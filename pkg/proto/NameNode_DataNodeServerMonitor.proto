@@ -1,0 +1,41 @@
+syntax = "proto3";
+package meta;
+import public "google/protobuf/empty.proto";
+option java_multiple_files=false;
+option java_package="com.hyz.proto";
+option java_outer_classname = "NameNode_DataNodeServerMonitor";
+
+// DataNode 监控系统与 NameNode 交互(服务端 stream)
+
+/*
+  实践建议：建议开一个新线程 / 进程，专门接收 RPC 地址
+    一旦 Leader 改变，正在等待 DataNode Leader 传输确认消息的 NameNode 必须停止自身的日志记录
+ */
+
+enum DataNodeLeaderState {
+    RaftVote = 0;  // DataNode 集群正在通过 MyRaft 协议选举出新的 Leader，此时不会返回任何 rpc 地址
+    RaftCrash = 1; // DataNode 集群超过半数宕机，此时不会返回任何 rpc 地址
+    LeaderRecovery = 2; // DataNode 集群正在恢复备份，此时不会返回任何 rpc 地址
+    LeaderOK = 3; // DataNode Leader 正常运行
+}
+
+// 场景一：NameNode 获取 DataNode Leader 的 rpc 服务地址
+// 不需要 Request 信息
+message GetDataNodeLeaderRPCResponse{
+    DataNodeLeaderState State = 1; // DataNode 状态
+    string LeaderRPCUri = 2;  // LeaderOK 状态下，返回 ip + 端口
+}
+
+// 场景二：DataNode Leader 变更，通知 NameNode
+/*
+    由于 GRPC 服务端无法调用客户端的东西，
+    所以我用了一个 stream 流传递，可以让 服务端 源源不断传入新 RPC 地址
+    直至 连 监控系统都宕机了，链接才能终止
+*/
+
+
+// DataNodeMonitor 作为 GRPC 服务端
+service DataNodeMonitorService {
+    // google.protobuf.Empty 就是无参 / 无返回值的填充字段
+    rpc GetLeaderRPC(google.protobuf.Empty) returns (stream GetDataNodeLeaderRPCResponse);
+}

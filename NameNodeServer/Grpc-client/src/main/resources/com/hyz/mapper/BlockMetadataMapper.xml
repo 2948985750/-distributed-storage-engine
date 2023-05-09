@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+在 resources 下一次创建多层文件，文件名之间需要用 '/' 分隔开。例如：aa/bb/cc/dd/mapper.xml
+mapper 的 namespace 属性必须和 mapper 类路径一致
+insert、delete、update 标签的 id 属性必须和 mapper 类中的方法名一致
+-->
+
+<mapper namespace="com.hyz.dao.mapper.BlockMetadataMapper">
+    <!--按照排序升序排序-->
+    <select id="getAllByFileHashSortByAsc" resultType="com.hyz.dao.entity.BlockMetadata">
+        select *
+        from block_metadata
+        where file_hash = #{fileHash}
+        order by order_of_block_in_file ASC;
+    </select>
+</mapper>
